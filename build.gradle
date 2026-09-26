@@ -1,27 +1,21 @@
-// Top-level build file where you can add configuration options common to all sub-projects/modules.
+plugins {
+    id 'java'
+}
 
-buildscript {
-    
-    repositories {
-        google()
-        jcenter()
-    }
-    dependencies {
-        classpath 'com.android.tools.build:gradle:4.2.2'
-
-        // NOTE: Do not place your application dependencies here; they belong
-        // in the individual module build.gradle files
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
     }
 }
 
-allprojects {
-    repositories {
-        google()
-        jcenter()
-        mavenCentral()
-    }
+repositories {
+    mavenCentral()
+    maven { url 'https://frcmaven.wpi.edu/artifactory/release/' }
 }
 
-task clean(type: Delete) {
-    delete rootProject.buildDir
+dependencies {
+    compileOnly('org.deltacv.EOCV-Sim:Common:4.2.0') { transitive = false }
+    compileOnly('org.deltacv.EOCV-Sim:Vision:4.2.0') { transitive = false }
+	
+    compileOnly 'org.wpilib.thirdparty.opencv:opencv-java:2027-4.13.0-3'
 }

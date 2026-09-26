@@ -1,4 +1,12 @@
-include ':easyopencv', ':examples'
+pluginManagement {
+    repositories {
+        mavenCentral()
+        maven { url 'https://plugins.gradle.org/m2/' }
+    }
+}
 
-include ':OpenCV-Android-SDK'
-project(':OpenCV-Android-SDK').projectDir=new File('easyopencv/OpenCV-Repackaged/OpenCV-Android-SDK')
+plugins {
+    id 'org.gradle.toolchains.foojay-resolver-convention' version "0.4.0"
+}
+
+rootProject.name = '67'
