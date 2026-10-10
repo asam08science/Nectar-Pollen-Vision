@@ -11,14 +11,14 @@ public class RedNectarPipeline extends OpenCvPipeline {
 
     private Mat circles = new Mat();
     private Mat hsv = new Mat();
-    private Mat pollenMask = new Mat();
+    private Mat nectarMask = new Mat();
     private Mat binary = new Mat();
     private Mat erode = new Mat();
     private Mat dilate = new Mat();
     private Mat reset = new Mat();   // cleaned binary mask used for circle detection
     private Mat binaryPreview = new Mat(); // RGB binary preview with circle overlays
-    private Mat pollen = new Mat();  // RGB preview frame used for overlays and return value
-    private Mat pollenPositions = new Mat();  // Field coordinates: [fieldX, fieldY] for each pollen
+    private Mat nectar = new Mat();  // RGB preview frame used for overlays and return value
+    private Mat nectarPositions = new Mat();  // Field coordinates: [fieldX, fieldY] for each nectar
 
     Mat erodeKernel = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, new org.opencv.core.Size(3,3));
     Mat diolateKernel = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, new org.opencv.core.Size(3,3));
@@ -33,8 +33,8 @@ public class RedNectarPipeline extends OpenCvPipeline {
     public static int minRadius = 3;
     public static int maxRadius = 22;
     public static int isBinary = 0;
-    public static Scalar pollenLower = new Scalar(22, 30, 100);
-    public static Scalar pollenUpper = new Scalar(36, 255, 255);
+    public static Scalar nectarLower = new Scalar(22, 30, 100);
+    public static Scalar nectarUpper = new Scalar(36, 255, 255);
     
     // Useless, ignore
     private double sphereX = -1;
@@ -52,10 +52,10 @@ public class RedNectarPipeline extends OpenCvPipeline {
         // Always release submats to prevent memory leaks in loop iterations
         topHalf.release();
         
-        // Isolate pollen pixels by HSV range thresholding.
+        // Isolate nectar pixels by HSV range thresholding.
         Imgproc.cvtColor(input, hsv, Imgproc.COLOR_RGB2HSV);
-        Core.inRange(hsv, pollenLower, pollenUpper, pollenMask);
-        binary = pollenMask;
+        Core.inRange(hsv, nectarLower, nectarUpper, nectarMask);
+        binary = nectarMask;
 
         // Morphological cleanup tuned for recall: gentle open/close, then light blur.
         Imgproc.morphologyEx(binary, erode, Imgproc.MORPH_OPEN, erodeKernel);
@@ -67,7 +67,7 @@ public class RedNectarPipeline extends OpenCvPipeline {
         Imgproc.cvtColor(reset, binaryPreview, Imgproc.COLOR_GRAY2RGB);
 
         // Draw annotations on a copy of the source frame and return it.
-        input.copyTo(pollen);
+        input.copyTo(nectar);
 
         // Clear previous frame detections so stale circles are never reused.
         circles.release();
@@ -81,7 +81,7 @@ public class RedNectarPipeline extends OpenCvPipeline {
 
         if (numCircles > 0) {
             targetDetected = true;
-            convertCirclesToPollenPositions(numCircles);
+            convertCirclesToNectarPositions(numCircles);
 
             double[] firstData = circles.get(0, 0);
             if (firstData != null) {
@@ -98,8 +98,8 @@ public class RedNectarPipeline extends OpenCvPipeline {
                 int r = (int) Math.round(data[2]);
                 
                 if (isBinary == 0) {
-                    Imgproc.circle(pollen, center, r, new Scalar(0, 255, 0), 2);
-                    Imgproc.circle(pollen, center, 3, new Scalar(255, 0, 0), -1);
+                    Imgproc.circle(nectar, center, r, new Scalar(0, 255, 0), 2);
+                    Imgproc.circle(nectar, center, 3, new Scalar(255, 0, 0), -1);
                 } else {
                     Imgproc.circle(binaryPreview, center, r, new Scalar(0, 255, 0), 2);
                     Imgproc.circle(binaryPreview, center, 3, new Scalar(255, 0, 0), -1);
@@ -110,12 +110,12 @@ public class RedNectarPipeline extends OpenCvPipeline {
             sphereX = -1;
             sphereY = -1;
             sphereRadius = -1;
-            pollenPositions.release();
-            pollenPositions = new Mat();
+            nectarPositions.release();
+            nectarPositions = new Mat();
         }
         
         if (isBinary == 0) {
-            return pollen;
+            return nectar;
         } else {
             return binaryPreview;
         }
@@ -125,9 +125,9 @@ public class RedNectarPipeline extends OpenCvPipeline {
      * Converts circle detections (pixel coordinates + radius) to field positions.
      * For each circle: radius → distance (via Desmos function) → field coordinates
      */
-    private void convertCirclesToPollenPositions(int numCircles) {
-        pollenPositions.release();
-        pollenPositions = new Mat();
+    private void convertCirclesToNectarPositions(int numCircles) {
+        nectarPositions.release();
+        nectarPositions = new Mat();
 
         for (int i = 0; i < numCircles; i++) {
             double[] circleData = circles.get(0, i);
@@ -143,10 +143,10 @@ public class RedNectarPipeline extends OpenCvPipeline {
             // Convert pixel coordinates + distance to field coordinates
             double[] fieldCoords = pixelToFieldCoordinates(pixelX, pixelY, distance);
 
-            // Store as [fieldX, fieldY] in pollenPositions
-            // pollenPositions will be 1 row × numCircles columns, each column = [fieldX, fieldY]
-            pollenPositions.push_back(new org.opencv.core.Mat(1, 2, org.opencv.core.CvType.CV_64F));
-            pollenPositions.put(0, i * 2, fieldCoords);
+            // Store as [fieldX, fieldY] in nectarPositions
+            // nectarPositions will be 1 row × numCircles columns, each column = [fieldX, fieldY]
+            nectarPositions.push_back(new org.opencv.core.Mat(1, 2, org.opencv.core.CvType.CV_64F));
+            nectarPositions.put(0, i * 2, fieldCoords);
         }
     }
 
@@ -192,9 +192,9 @@ public class RedNectarPipeline extends OpenCvPipeline {
     }
 
     /**
-     * Getter for pollen field positions
+     * Getter for nectar field positions
      */
-    public Mat getPollenPositions() {
-        return pollenPositions;
+    public Mat getNectarPositions() {
+        return nectarPositions;
     }
 }
